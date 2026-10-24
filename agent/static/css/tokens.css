@@ -1,0 +1,222 @@
+/* Equis · 设计令牌（P3-37 由 equis.html 拆出，普通 <script>/<link>，无构建工具） */
+
+/* ============================================
+   Equis - Apple Inspired Design System
+   ============================================ */
+:root {
+  --bg: #f0f2f6;
+  --bg-sidebar: rgba(255,255,255,0.55);
+  --bg-chat: transparent;
+  --bg-card: rgba(255,255,255,0.52);
+  --bg-card-hover: rgba(255,255,255,0.7);
+  --bg-input: rgba(255,255,255,0.6);
+  /* P3-30：这三个 token 之前从未定义，导致 .vision-card 亮色下无底色无边框、拖拽遮罩文字不可读 */
+  --bg-secondary: #ffffff;
+  --bg-elevated: #ffffff;
+  --border-color: rgba(0,0,0,0.10);
+  --text: #1d1d1f;
+  --text-secondary: #545458;   /* P3-29: 6.73:1 on #f0f2f6 */
+  --text-tertiary: #6e6e73;    /* P3-29: 4.52:1 on #f0f2f6（原 #aeaeb2 仅 1.97:1） */
+  --primary: #5e5ce6;
+  --primary-hover: #4b49d6;
+  --primary-light: #7d7aff;
+  --primary-subtle: rgba(94,92,230,0.08);
+  --primary-glow: rgba(94,92,230,0.18);
+  --accent: #bf5af2;
+  --border: rgba(0,0,0,0.06);
+  --border-strong: rgba(0,0,0,0.10);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.06);
+  --glass-blur: blur(40px) saturate(160%);
+  --glass-rim: rgba(255,255,255,0.5);
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'PingFang SC', sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --tag-green: #30d158;
+  --tag-blue: #5e5ce6;
+  --tag-purple: #bf5af2;
+  --tag-orange: #ff9f0a;
+  /* P3-29：语义色拆 bg/fg —— -bg/-tag-* 只做底色与圆点，-fg 专供文字（WCAG AA） */
+  --tag-green-fg: #1f7a35;    /* 原把 #30d158 当文字用仅 1.80:1 */
+  --tag-orange-fg: #b25000;   /* 4.64:1 */
+  --tag-purple-fg: #8944ab;   /* 5.39:1 */
+  --tag-blue-fg: #4b49d6;     /* 5.81:1 */
+  --danger: #d70015;          /* 统一危险色（替换散落的 #ff453a / #e24b4a） */
+
+  /* ── P3-33 高度标尺：不透明表面 + 真实阴影（内容表面禁止再叠加 blur）── */
+  --surface-0: #e9ecf3;   /* 画布 */
+  --surface-1: #ffffff;   /* 内容卡 / 气泡 / 卡片 */
+  --surface-2: #ffffff;   /* 悬浮操作栏 / 下拉 */
+  --surface-3: #ffffff;   /* 抽屉 / 检查器内卡 */
+  --surface-4: #ffffff;   /* 模态 */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(16,20,40,0.10), 0 1px 1px rgba(16,20,40,0.06);
+  --elev-2: 0 2px 6px rgba(16,20,40,0.10), 0 2px 4px rgba(16,20,40,0.07);
+  --elev-3: 0 10px 24px rgba(16,20,40,0.14), 0 3px 8px rgba(16,20,40,0.10);
+  --elev-4: 0 22px 50px rgba(16,20,40,0.24), 0 8px 18px rgba(16,20,40,0.16);
+  /* 旧 shadow 变量统一指向高度标尺，历史规则立刻获得真实层次 */
+  --shadow-sm: var(--elev-1);
+  --shadow-md: var(--elev-2);
+  --shadow-lg: var(--elev-3);
+  --scrim: rgba(12,14,22,0.42);
+
+  /* 层级 */
+  --z-nav: 10;
+  --z-sticky: 20;
+  --z-dropdown: 30;
+  --z-drawer: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* 间距刻度 4/8/12/16/24/32/48/64 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* 字阶：6 级 + 展示级（数值读数用 calc 派生，不新增级别） */
+  --fs-1: 11px;
+  --fs-2: 12px;
+  --fs-3: 13px;
+  --fs-4: 14px;
+  --fs-5: 16px;
+  --fs-6: 20px;
+
+  /* 外壳骨架尺寸 */
+  --rail-w: 64px;
+  --context-w: 272px;
+  --inspector-w: 340px;
+  --hairline: 1px;
+}
+
+[data-theme="dark"] {  --bg: #000000;  --bg-sidebar: rgba(28,28,30,0.55);  --bg-card: rgba(28,28,30,0.48);  --bg-card-hover: rgba(28,28,30,0.65);  --bg-input: rgba(28,28,30,0.6);  --text: #f5f5f7;  --text-secondary: #a1a1a6;  --text-tertiary: #78787c;  --primary: #7d7aff;  --primary-hover: #9b99ff;  --primary-light: #a5a3ff;  --primary-subtle: rgba(125,122,255,0.12);  --primary-glow: rgba(125,122,255,0.22);  --accent: #bf5af2;  --border: rgba(255,255,255,0.08);  --border-strong: rgba(255,255,255,0.14);  --glass-rim: rgba(255,255,255,0.15);  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);  --shadow-md: 0 4px 16px rgba(0,0,0,0.25);  --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);  --edge-glow: rgba(125,122,255,0.15);  --edge-glow-green: rgba(48,209,88,0.12);  --edge-glow-accent: rgba(191,90,242,0.12);}
+
+/* Dark Fluent 边缘光 */
+/* P3-29：暗色下的语义文字色（-fg）用高亮版，保证在 #000 上的可读性 */
+[data-theme="dark"] {
+  --tag-green-fg: #30d158;
+  --tag-orange-fg: #ff9f0a;
+  --tag-purple-fg: #bf5af2;
+  --tag-blue-fg: #7d7aff;
+  --danger: #ff453a;
+  /* P3-30：补齐暗色下缺失的 token */
+  --bg-secondary: rgba(255,255,255,0.05);
+  --bg-elevated: #1c1c1e;
+  --border-color: rgba(255,255,255,0.12);
+  /* P3-33：暗色高度标尺 */
+  --surface-0: #000000;
+  --surface-1: #121214;
+  --surface-2: #17171a;
+  --surface-3: #1c1c1f;
+  --surface-4: #232326;
+  --elev-1: 0 1px 2px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03);
+  --elev-2: 0 3px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(255,255,255,0.04);
+  --elev-3: 0 12px 28px rgba(0,0,0,0.66), 0 0 0 1px rgba(255,255,255,0.05);
+  --elev-4: 0 24px 56px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.07);
+  --scrim: rgba(0,0,0,0.62);
+}
+[data-theme="dark"] .input-box:focus-within {
+  box-shadow: 0 0 0 4px var(--primary-glow), 0 0 30px var(--edge-glow), var(--shadow-lg);
+}
+[data-theme="dark"] .preset-card {
+  box-shadow: 0 0 0 1px rgba(125,122,255,0.06);
+}
+[data-theme="dark"] .preset-card:hover {
+  box-shadow: 0 0 20px var(--edge-glow), 0 0 0 1px rgba(125,122,255,0.25), var(--shadow-md);
+}
+[data-theme="dark"] .sidebar {
+  box-shadow: inset -1px 0 0 rgba(125,122,255,0.08);
+}
+[data-theme="dark"] .history-item:hover {
+  box-shadow: 0 0 12px var(--edge-glow), inset 0 0 0 1px rgba(125,122,255,0.1);
+}
+[data-theme="dark"] .history-item.active {
+  box-shadow: 0 0 16px var(--edge-glow), inset 0 0 0 1px rgba(125,122,255,0.15);
+}
+
+/* ============================================
+   Reset & Base
+   ============================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{
+  font-family: var(--font-body);
+  background:
+    radial-gradient(ellipse 80% 80% at 20% 10%, rgba(180,190,220,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 75% 85%, rgba(200,195,220,0.12) 0%, transparent 50%),
+    var(--bg);
+  color: var(--text); transition: background-color 0.5s ease, color 0.4s ease;
+  height: 100vh;
+  overflow: hidden;
+  line-height: 1.47059;
+  letter-spacing: -0.022em;
+}
+
+/* ============================================
+   Background Ambient
+   ============================================ */
+.bg-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-ambient .glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.2;
+  animation: ambientDrift 25s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+.bg-ambient .glow:nth-child(1) {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(94,92,230,0.18), transparent 70%);
+  top: -10%; left: -5%;
+  animation: blobMorph1 20s ease-in-out infinite;
+}
+.bg-ambient .glow:nth-child(2) {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(191,90,242,0.12), transparent 70%);
+  bottom: -5%; right: -5%;
+  animation: blobMorph2 25s ease-in-out infinite;
+}
+.bg-ambient .glow:nth-child(3) {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(56,182,255,0.10), transparent 70%);
+  top: 40%; left: 50%;
+  animation: blobMorph3 30s ease-in-out infinite;
+}
+@keyframes blobMorph1 {
+  0%,100% { transform: translate(0,0) scale(1) translateZ(0); border-radius: 60% 40% 50% 50%; }
+  50% { transform: translate(30px,-10px) scale(1.05) translateZ(0); border-radius: 40% 60% 55% 45%; }
+}
+@keyframes blobMorph2 {
+  0%,100% { transform: translate(0,0) scale(1) translateZ(0); border-radius: 50% 50% 40% 60%; }
+  50% { transform: translate(-30px,20px) scale(1.06) translateZ(0); border-radius: 60% 40% 50% 50%; }
+}
+@keyframes blobMorph3 {
+  0%,100% { transform: translate(0,0) scale(1) translateZ(0); border-radius: 40% 60% 50% 50%; }
+  50% { transform: translate(-40px,30px) scale(1.08) translateZ(0); border-radius: 55% 45% 40% 60%; }
+}
+/* Accessibility: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .bg-ambient .glow { animation: none !important; }
+  .message { animation: none !important; }
+  .preset-card { transition: none !important; }
+  .status-dot { animation: none !important; }
+}

@@ -1,0 +1,997 @@
+/* ============================================================
+   Equis · Precision Instrument — 视觉升级层
+   ------------------------------------------------------------
+   设计取向：精密仪器，而不是"又一个 AI 聊天框"。
+
+   三条原则：
+     1. 层次靠**细线与微光**，不靠模糊与重阴影
+        （玻璃拟态在深色下会把层次糊平，改成 1px 边 + 顶部内高光）
+     2. 数据用**等宽数字**，标签用**微缩大写**
+        （测量系统的可信感来自"读数是齐的"）
+     3. 动效只做**入场编排**与**悬停微反馈**，全部尊重 reduced-motion
+
+   本文件是附加层：加载在 tokens/app/cards 之后，
+   只覆盖视觉，不改结构与行为。
+   ============================================================ */
+
+/* ── 一、重新标定色板 ─────────────────────────────────────
+   深色不再用纯黑（纯黑会让所有边界消失），改用石墨蓝黑，
+   并叠一层极淡的工程网格 —— 这是"仪器面板"的核心质感来源。 */
+[data-theme="dark"] {
+  --pi-bg:        #0a0b0e;
+  --pi-bg-grid:   rgba(255,255,255,0.022);
+  --pi-surface-1: #101217;
+  --pi-surface-2: #14171d;
+  --pi-surface-3: #191d24;
+  --pi-hairline:  rgba(255,255,255,0.075);
+  --pi-hairline-2:rgba(255,255,255,0.13);
+  --pi-text:      #e9ecf2;
+  --pi-text-2:    #9aa3b2;
+  --pi-text-3:    #a1aaba;
+  --pi-accent:    #8b8cff;
+  --pi-accent-2:  #b4b5ff;
+  --pi-signal:    #5eead4;   /* 数据/读数专用：青 */
+  --pi-warn:      #ffb02e;
+  --pi-danger:    #ff5a5f;
+}
+
+[data-theme="light"] {
+  --pi-bg:        #f4f5f8;
+  --pi-bg-grid:   rgba(16,20,40,0.028);
+  --pi-surface-1: #ffffff;
+  --pi-surface-2: #ffffff;
+  --pi-surface-3: #ffffff;
+  --pi-hairline:  rgba(16,20,40,0.085);
+  --pi-hairline-2:rgba(16,20,40,0.16);
+  --pi-text:      #14171d;
+  --pi-text-2:    #4c5361;
+  --pi-text-3:    #6b7280;
+  --pi-accent:    #5155d8;
+  --pi-accent-2:  #5155c7;
+  --pi-signal:    #0d9488;
+  --pi-warn:      #b45309;
+  --pi-danger:    #c81e1e;
+}
+
+/* 动效令牌 */
+:root {
+  --pi-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --pi-snap:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --pi-dur-1: 120ms;
+  --pi-dur-2: 220ms;
+  --pi-dur-3: 420ms;
+  --pi-mono: 'SF Mono', 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+}
+
+/* ── 二、画布：石墨底 + 工程网格 + 顶部微光 ─────────────── */
+body {
+  background-color: var(--pi-bg);
+  background-image:
+    /* 网格（32px 主格 + 8px 次格，极淡） */
+    linear-gradient(var(--pi-bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pi-bg-grid) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px),
+    /* 顶部冷光，给画面一个"光源"方向 */
+    radial-gradient(1200px 520px at 50% -12%, rgba(139,140,255,0.10), transparent 70%);
+  background-size: 32px 32px, 32px 32px, 8px 8px, 8px 8px, 100% 100%;
+  background-attachment: fixed;
+  color: var(--pi-text);
+  letter-spacing: -0.011em;
+}
+
+.main { background: transparent; }
+
+/* Ambient light is kept behind readable surfaces. */
+.bg-ambient { opacity: 0.35; }
+.bg-ambient .glow { filter: blur(160px); opacity: 0.12; }
+
+/* ── 三、排版：微缩大写标签 + 等宽数字 ─────────────────── */
+.topbar-title,
+.view-title,
+h1, h2, h3 {
+  letter-spacing: -0.028em;
+  font-weight: 620;
+}
+
+/* 所有读数、耗时、token、成本一律等宽数字对齐 */
+.sensor-val,
+.trace-ms,
+.run-total,
+.cost,
+.metric,
+.card-value,
+.stat-value,
+.num,
+time,
+[data-num] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  letter-spacing: 0;
+}
+
+/* 微缩大写小标签：仪器面板上的丝印感 */
+.history-label,
+.sensor-label,
+.sidebar-subtitle,
+.section-label,
+.panel-title,
+.preset-card h4::before,
+.kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── 四、外壳：rail / sidebar / topbar 的细线分区 ───────── */
+.rail {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 40%);
+  border-right: 1px solid var(--pi-hairline);
+}
+
+.sidebar {
+  background: var(--pi-surface-1);
+  border-right: 1px solid var(--pi-hairline);
+  box-shadow: none;
+}
+
+.topbar {
+  background: color-mix(in oklab, var(--pi-bg) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--pi-hairline);
+}
+
+/* rail 按钮：默认极低调，悬停才出现"刻度"提示 */
+.rail-item > span:first-child { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; }
+.rail-item .vi { display: block; width: 20px; height: 20px; }
+.rail-btn {
+  color: var(--pi-text-3);
+  border-radius: 10px;
+  transition: color var(--pi-dur-2) var(--pi-spring),
+              background-color var(--pi-dur-2) var(--pi-spring);
+}
+/* 浅色下 rail 本身是白底，--pi-text-3 偏淡，单独加深一档 */
+[data-theme="light"] .rail-btn { color: #4b5563; }
+[data-theme="light"] .rail-btn:hover { color: #14171d; background: rgba(16,20,40,0.05); }
+[data-theme="light"] .rail-btn.is-active,
+[data-theme="light"] .rail-btn[aria-current="page"] {
+  color: #4348c9;
+  background: linear-gradient(180deg, rgba(81,85,216,0.14), rgba(81,85,216,0.05));
+  box-shadow: inset 0 0 0 1px rgba(81,85,216,0.28);
+}
+/* 浅色下 14px 细描边图标偏淡，单独加深图标本身 */
+[data-theme="light"] .rail-item > span:first-child { color: #374151; }
+[data-theme="light"] .rail-item.is-active > span:first-child { color: #4348c9; }
+.rail-btn:hover { color: var(--pi-text); background: rgba(255,255,255,0.05); }
+.rail-btn.is-active, .rail-btn[aria-current="page"] {
+  color: var(--pi-accent-2);
+  background: linear-gradient(180deg, rgba(139,140,255,0.18), rgba(139,140,255,0.06));
+  box-shadow: inset 0 0 0 1px rgba(139,140,255,0.28);
+}
+
+/* ── 五、历史会话：像实验记录本 ─────────────────────────── */
+.history-item {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--pi-text-2);
+  font-size: 13px;
+  line-height: 1.35;
+  transition: background-color var(--pi-dur-1) ease,
+              border-color var(--pi-dur-1) ease,
+              color var(--pi-dur-1) ease;
+  position: relative;
+}
+.history-item::before {
+  content: "";
+  position: absolute; left: 0; top: 50%;
+  width: 2px; height: 0;
+  background: var(--pi-accent);
+  border-radius: 2px;
+  transform: translateY(-50%);
+  transition: height var(--pi-dur-2) var(--pi-spring);
+}
+.history-item:hover { background: rgba(255,255,255,0.04); color: var(--pi-text); }
+.history-item:hover::before { height: 14px; }
+.history-item.active {
+  background: linear-gradient(90deg, rgba(139,140,255,0.14), rgba(139,140,255,0.04));
+  border-color: rgba(139,140,255,0.22);
+  color: var(--pi-text);
+}
+.history-item.active::before { height: 18px; }
+
+/* ── 六、欢迎区：从"卡片墙"改成"仪器启动面板" ──────────── */
+.welcome {
+  width: 100%; max-width: 880px; margin: clamp(12px, 3vh, 32px) auto 8px;
+  padding: 0; text-align: left;
+}
+.welcome::before { display: none; }
+.welcome-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.welcome .welcome-icon {
+  width: 42px; height: 42px; flex: 0 0 42px; margin: 0; border-radius: 14px;
+  border: 3px solid rgba(139,140,255,.2); box-shadow: 0 0 0 5px rgba(139,140,255,.05);
+}
+.welcome-kicker { color: var(--pi-text-2); font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+.welcome h1 {
+  font-size: clamp(28px, 3vw, 38px); line-height: 1.2; letter-spacing: -.035em;
+  margin-bottom: 12px; background: none; color: var(--pi-text); -webkit-text-fill-color: currentColor;
+}
+.welcome > .welcome-lead { color: var(--pi-text-2); font-size: 14px; line-height: 1.65; margin: 0 0 26px; }
+.task-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; font-size: 12px; color: var(--pi-text-2); }
+.task-heading span:first-child { font-weight: 600; color: var(--pi-text); }
+.task-heading span:last-child { font-size: 11px; }
+.pc-badge { position: absolute !important; right: 14px; top: 18px; padding: 3px 8px; border-radius: 999px; background: rgba(139,140,255,.13); color: var(--pi-accent-2); font-size: 10px; font-weight: 600; }
+@media (min-width: 1180px) { .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-height: 900px) and (min-width: 721px) {
+  .welcome { margin-top: 4px; }
+  .welcome-brand { margin-bottom: 10px; }
+  .welcome .welcome-icon { width: 36px; height: 36px; flex-basis: 36px; }
+  .welcome > .welcome-lead { margin-bottom: 16px; }
+  .welcome-lead br { display: none; }
+}
+
+/* 快捷卡：细线 + 图标位 + 悬停抬升 */
+.preset-grid { gap: 12px; }
+
+.preset-card {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.038), rgba(255,255,255,0.012));
+  border: 1px solid var(--pi-hairline);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--pi-dur-2) var(--pi-spring),
+    border-color var(--pi-dur-2) ease,
+    box-shadow var(--pi-dur-2) ease;
+  animation: pi-rise var(--pi-dur-3) var(--pi-spring) both;
+}
+
+/* 入场编排：逐张错开 55ms */
+.preset-card:nth-child(1) { animation-delay: 40ms; }
+.preset-card:nth-child(2) { animation-delay: 95ms; }
+.preset-card:nth-child(3) { animation-delay: 150ms; }
+.preset-card:nth-child(4) { animation-delay: 205ms; }
+.preset-card:nth-child(5) { animation-delay: 260ms; }
+.preset-card:nth-child(6) { animation-delay: 315ms; }
+
+/* 悬停：抬 2px + 边线亮起 + 顶部一道极细高光扫过 */
+.preset-card::after {
+  content: "";
+  position: absolute; inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139,140,255,0.7), transparent);
+  opacity: 0;
+  transition: opacity var(--pi-dur-2) ease;
+}
+.preset-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--pi-hairline-2);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 12px 28px -12px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(139,140,255,0.10);
+}
+.preset-card:hover::after { opacity: 1; }
+.preset-card:active { transform: translateY(0) scale(0.994); }
+
+.preset-card h4 {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--pi-text);
+}
+.preset-card p {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--pi-text-3);
+}
+
+/* 图标位：emoji 换掉后这里放 SVG，统一 28px 方框 + 淡底 */
+.pc-icon {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(139,140,255,0.14), rgba(139,140,255,0.05));
+  border: 1px solid rgba(139,140,255,0.22);
+  color: var(--pi-accent-2);
+  margin-bottom: 14px;
+  font-size: 16px;           /* 兜底：若仍是 emoji，也不至于撑破 */
+}
+.pc-icon svg { width: 17px; height: 17px; }
+
+@keyframes pi-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── 七、输入区：做成"命令台" ───────────────────────────── */
+.input-box {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018));
+  border: 1px solid var(--pi-hairline-2);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 18px 40px -20px rgba(0,0,0,0.8);
+  transition: border-color var(--pi-dur-2) ease, box-shadow var(--pi-dur-2) ease;
+}
+.input-box:focus-within {
+  border-color: rgba(139,140,255,0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 0 0 3px rgba(139,140,255,0.14),
+    0 18px 44px -20px rgba(0,0,0,0.85);
+}
+
+[data-theme="light"] .input-box {
+  background: #fff; border-color: rgba(34,45,72,.16);
+  box-shadow: 0 8px 24px -14px rgba(32,45,78,.22), inset 0 1px 0 #fff;
+}
+[data-theme="light"] .input-box:focus-within {
+  border-color: #7074d8; box-shadow: 0 0 0 3px rgba(81,85,216,.1), 0 8px 24px -14px rgba(32,45,78,.2);
+}
+[data-theme="light"][data-motion="full"] .bg-ambient { opacity: .22; }
+
+/* 工具按钮：去 emoji 后是纯线性图标 */
+.tool-btn {
+  color: var(--pi-text-3);
+  border-radius: 8px;
+  transition: color var(--pi-dur-1) ease, background-color var(--pi-dur-1) ease;
+}
+.tool-btn:hover:not([disabled]) { color: var(--pi-text); background: rgba(255,255,255,0.06); }
+.tool-btn[disabled] { opacity: 0.32; }
+.tool-btn svg { width: 16px; height: 16px; }
+
+/* 发送按钮：实心点 + 光晕 */
+.send-btn {
+  background: linear-gradient(180deg, var(--pi-accent-2), var(--pi-accent));
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 6px 18px -6px rgba(139,140,255,0.8);
+  transition: transform var(--pi-dur-1) var(--pi-snap), filter var(--pi-dur-1) ease;
+}
+.send-btn:hover { filter: brightness(1.08); }
+.send-btn:active { transform: scale(0.94); }
+
+/* 输入框占位文字不要那么虚 */
+textarea::placeholder, input::placeholder { color: var(--pi-text-3); opacity: 1; }
+
+/* ── 八、传感器小面板：读数用信号色 ─────────────────────── */
+.sensor-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
+  border: 1px solid var(--pi-hairline);
+  border-radius: 12px;
+}
+.sensor-val {
+  color: var(--pi-signal);
+  font-family: var(--pi-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.sensor-unit { color: var(--pi-text-3); font-size: 10px; }
+.sensor-icon svg { width: 13px; height: 13px; opacity: 0.75; }
+.sensor-status { color: var(--pi-text-3); font-size: 10.5px; letter-spacing: 0.02em; }
+
+/* ── 九、状态点：呼吸但要克制 ───────────────────────────── */
+.status-dot {
+  box-shadow: 0 0 0 3px rgba(94,234,212,0.10);
+  background: var(--pi-signal);
+}
+
+/* ── 十、滚动条：细、无轨道 ─────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.16) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.26); background-clip: content-box; }
+
+/* ── 十一、焦点可见性（键盘可达）────────────────────────── */
+:where(button, a, [tabindex], textarea, input):focus-visible {
+  outline: 2px solid var(--pi-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── 十二、Mermaid 架构图 ─────────────────────────────────
+   深色下白底白字，根因有两层（均实测确认）：
+     1) cards.js 只切 theme:'dark'，mermaid 仍用浅色调色板；
+     2) 更致命的是 mermaid 生成的内联样式里有
+        `.default>*{fill:#f2f0ff!important}` —— 一个 !important 的浅色填充，
+        把节点矩形刷成近白，而文字是 #ccc → 白底浅字，几乎不可读。
+   处理：
+     · 源头：cards.js 改为 theme:'base' + themeVariables（见该文件注释）
+     · 兜底：这里用**更高特异性 + !important** 压住 `.default>*`，
+       选择器带 .node 与属性选择器，压过单一 class。 */
+.mermaid-box {
+  background: transparent;
+  border: 1px solid var(--pi-hairline);
+  border-radius: 14px;
+  padding: 22px 16px;
+}
+[data-theme="dark"] .mermaid-box { background: rgba(255,255,255,0.015); }
+
+[data-theme="dark"] .mermaid-box .node[data-node] > rect,
+[data-theme="dark"] .mermaid-box .node[data-node] > polygon,
+[data-theme="dark"] .mermaid-box .node[data-node] > circle,
+[data-theme="dark"] .mermaid-box .node[data-node] > ellipse {
+  fill: #14171d !important;
+  stroke: rgba(139,140,255,0.55) !important;
+  stroke-width: 1px !important;
+}
+[data-theme="dark"] .mermaid-box .node[data-node] .nodeLabel,
+[data-theme="dark"] .mermaid-box .node[data-node] span,
+[data-theme="dark"] .mermaid-box .node[data-node] p,
+[data-theme="dark"] .mermaid-box .node[data-node] div {
+  color: #e9ecf2 !important;
+  fill: #e9ecf2 !important;
+}
+[data-theme="dark"] .mermaid-box .edgePath path,
+[data-theme="dark"] .mermaid-box .flowchart-link {
+  stroke: rgba(154,163,178,0.5) !important;
+}
+
+[data-theme="light"] .mermaid-box .node[data-node] > rect {
+  fill: #ffffff !important;
+  stroke: rgba(81,85,216,0.45) !important;
+}
+[data-theme="light"] .mermaid-box .node[data-node] .nodeLabel,
+[data-theme="light"] .mermaid-box .node[data-node] span,
+[data-theme="light"] .mermaid-box .node[data-node] p {
+  color: #14171d !important;
+}
+
+/* ── B3：自绘架构图（替代 mermaid）──────────────────────────
+   配色全部走 CSS 变量，明暗主题自动跟随，
+   不再需要像 mermaid 那样用 !important 去压制它的内联样式。 */
+.arch-svg { display: block; max-width: 100%; height: auto; }
+.arch-svg .arch-node rect {
+  fill: var(--pi-surface-2);
+  stroke: rgba(139, 140, 255, 0.45);
+  stroke-width: 1;
+  transition: fill var(--pi-dur-2) ease, stroke var(--pi-dur-2) ease;
+}
+.arch-svg .arch-node text {
+  fill: var(--pi-text);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+}
+.arch-svg .arch-node.is-terminal rect {
+  fill: rgba(139, 140, 255, 0.14);
+  stroke: rgba(139, 140, 255, 0.6);
+}
+.arch-svg .arch-node.is-terminal text {
+  fill: var(--pi-accent-2);
+  font-family: var(--pi-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+}
+.arch-svg .arch-node:hover rect {
+  stroke: rgba(139, 140, 255, 0.9);
+  fill: rgba(139, 140, 255, 0.08);
+}
+.arch-svg .arch-edge { stroke: rgba(154, 163, 178, 0.5); stroke-width: 1.4; }
+.arch-svg .arch-edge.is-optional {
+  stroke-dasharray: 4 4;
+  stroke: rgba(154, 163, 178, 0.4);
+}
+
+/* ── 十三、运行时间轴 / 轨迹：条形图更清晰 ──────────────── */
+.trace-bar, .bar-fill {
+  background: linear-gradient(90deg, rgba(139,140,255,0.55), rgba(139,140,255,0.95));
+  border-radius: 3px;
+}
+
+/* ── 十四、无障碍：动效降级 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .preset-card { animation: none !important; }
+  .preset-card:hover { transform: none; }
+  .history-item::before { transition: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* ── 十五、窄屏：收紧网格与卡片 ─────────────────────────── */
+@media (max-width: 900px) {
+  .preset-grid { gap: 10px; }
+  .welcome h1 { font-size: 28px; }
+  body { background-size: 24px 24px, 24px 24px, 6px 6px, 6px 6px, 100% 100%; }
+}
+
+/* ── 十六、右侧检查器：空态收起 ────────────────────────────
+   原先 .inspector 常驻（grid 第 4 列 auto + --inspector-w），
+   多数时候是空的却占掉约 22% 宽度。现在收起时宽度归零，
+   主内容区自动吃满（grid 的 auto 列会跟随）。 */
+.inspector {
+  transition: width var(--pi-dur-3) var(--pi-spring),
+              opacity var(--pi-dur-2) ease,
+              border-color var(--pi-dur-2) ease;
+  overflow: hidden;
+}
+.app.is-inspector-collapsed .inspector {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  opacity: 0;
+  border-left-color: transparent !important;
+  pointer-events: none;
+}
+
+/* 收起后的"唤回"胶囊：贴右下角，低调但可发现 */
+.inspector-reopen {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px 8px 11px;
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  color: var(--pi-text-2);
+  background: color-mix(in oklab, var(--pi-surface-2) 88%, transparent);
+  border: 1px solid var(--pi-hairline-2);
+  border-radius: 999px;
+  backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: color var(--pi-dur-2) ease,
+              transform var(--pi-dur-2) var(--pi-spring),
+              border-color var(--pi-dur-2) ease;
+}
+.inspector-reopen svg { width: 14px; height: 14px; }
+.inspector-reopen:hover {
+  color: var(--pi-text);
+  border-color: rgba(139, 140, 255, 0.5);
+  transform: translateY(-1px);
+}
+.inspector-reopen[hidden] { display: none; }
+
+/* ── 十七、去 emoji 后的配套样式 ───────────────────────────
+   2026-10-17：app.js 里的 ✅/⚠/❌/🖼️/🔴/🎤 已全部换成 SVG 或纯文字，
+   这里补上它们原本靠 emoji 提供的视觉语义（状态点、图标尺寸）。 */
+.drop-overlay-inner svg {
+  width: 22px;
+  height: 22px;
+  vertical-align: -5px;
+  margin-right: 8px;
+}
+
+/* 监控状态：用圆点代替 ✅/⚠/❌ */
+.monitor-status::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+  vertical-align: 1px;
+}
+.monitor-status.live::before {
+  background: var(--pi-signal);
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.12);
+}
+
+/* 录音态：红点呼吸 */
+#voiceBtn svg { transition: transform var(--pi-dur-2) var(--pi-spring); }
+#voiceBtn[style*="animation"] svg { color: var(--pi-danger); }
+
+/* 工作台传感器卡：emoji 换成 SVG 后必须显式约束尺寸，
+   否则 SVG 会撑满容器（原样式靠 emoji 的 font-size 决定大小）。 */
+.monitor-card-icon {
+  display: grid;
+  place-items: center;
+  color: var(--pi-text-2);
+}
+.monitor-card-icon svg {
+  width: 30px;
+  height: 30px;
+  opacity: 0.85;
+}
+
+/* ══════════════════════════════════════════════════════════
+   十八、测量报告版式（A4）
+   ----------------------------------------------------------
+   原来的合规卡片是一堆松散的 div：标签与数值都在流里，
+   数值不右对齐、不用等宽，读起来像聊天记录而不是检测报告。
+   这里把它做成"报告表格"：
+     · 左标签 + 右数值，中间用点线引导（dot leader）
+     · 数值等宽 + 右对齐，小数点自然对齐
+     · 层级用缩进与小号字表达（子项、合计）
+     · 结论徽章用色块 + 字重，而不是 emoji
+   ══════════════════════════════════════════════════════════ */
+
+.compliance-card {
+  border: 1px solid var(--pi-hairline);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  overflow: hidden;
+}
+
+/* 头部：像报告的表头，左侧一道状态色条 */
+.compliance-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--pi-hairline);
+  background: rgba(255,255,255,0.02);
+  position: relative;
+}
+.compliance-card-header::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--pi-text-3);
+}
+.compliance-card.pass .compliance-card-header::before { background: var(--pi-signal); }
+.compliance-card.fail .compliance-card-header::before { background: var(--pi-danger); }
+.compliance-card.indeterminate .compliance-card-header::before { background: var(--pi-warn); }
+
+/* 预算表：键值对 + 点线引导 */
+.compliance-budget {
+  padding: 6px 14px 10px;
+  border-bottom: 1px solid var(--pi-hairline);
+}
+
+.compliance-budget-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+/* 中间那条点线：用伪元素填充弹性空隙 */
+.compliance-budget-row .label {
+  color: var(--pi-text-2);
+  white-space: nowrap;
+}
+.compliance-budget-row::before {
+  content: "";
+  grid-column: 2;
+  grid-row: 1;
+  border-bottom: 1px dotted rgba(255,255,255,0.13);
+  transform: translateY(-3px);
+}
+.compliance-budget-row .label { grid-column: 1; grid-row: 1; }
+.compliance-budget-row .value {
+  grid-column: 3;
+  grid-row: 1;
+  font-family: var(--pi-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+  color: var(--pi-text);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 子项：缩进 + 弱化，但仍对齐 */
+.compliance-budget-row.sub { font-size: 11.5px; }
+.compliance-budget-row.sub .label { color: var(--pi-text-3); padding-left: 12px; }
+.compliance-budget-row.sub .value { color: var(--pi-text-2); }
+
+/* 合计行：上边线 + 加粗 + 信号色 */
+.compliance-budget-row.total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--pi-hairline-2);
+  font-weight: 600;
+}
+.compliance-budget-row.total .label { color: var(--pi-text); }
+.compliance-budget-row.total .value { color: var(--pi-signal); font-size: 13px; }
+
+/* 方差占比条：更细、更克制 */
+.budget-bars {
+  display: grid !important;
+  gap: 6px !important;
+  padding: 10px 14px !important;
+  margin: 0 !important;
+  border-top: none !important;
+}
+.budget-bar {
+  display: grid;
+  grid-template-columns: 40px 1fr 46px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.bb-label { color: var(--pi-text-3); letter-spacing: 0.02em; }
+.bb-track {
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+.bb-fill { height: 100%; border-radius: 99px; transition: width .5s var(--pi-spring); }
+.bb-fill.ba { background: linear-gradient(90deg, #6f8dff, #8b8cff); }
+.bb-fill.bb { background: linear-gradient(90deg, #46c9b4, #5eead4); }
+.bb-fill.bo { background: linear-gradient(90deg, #e0a83a, #ffb02e); }
+.bb-pct {
+  font-family: var(--pi-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--pi-text-2);
+  text-align: right;
+}
+
+/* 正文里的表格也统一成报告风格（.msg-bubble 是实际的消息容器类） */
+.msg-bubble table,
+.message table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin: 12px 0;
+  border: 1px solid var(--pi-hairline);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.msg-bubble table th,
+.message table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pi-text-3);
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--pi-hairline-2);
+}
+.msg-bubble table td,
+.message table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--pi-hairline);
+  color: var(--pi-text-2);
+  vertical-align: top;
+}
+.msg-bubble table tr:last-child td,
+.message table tr:last-child td { border-bottom: none; }
+.msg-bubble table td:last-child,
+.message table td:last-child {
+  text-align: right;
+  font-family: var(--pi-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--pi-text);
+  white-space: nowrap;
+}
+
+/* 空的卡片主体不要留白（预览实测：空 body 会撑出约 40px 空隙） */
+.compliance-card-body:empty,
+.card-body:empty { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════
+   十九、动效编排（A5）
+   ----------------------------------------------------------
+   原则：只做"到位感"，不做花活。
+     · 消息入场：轻微上移 + 淡入，一次性，不循环
+     · 报告卡片：比消息更慢一点点，形成先后关系
+     · 全部在 prefers-reduced-motion 下关闭
+   ══════════════════════════════════════════════════════════ */
+@keyframes pi-msg-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.message {
+  animation: pi-msg-in 0.36s var(--pi-spring) both;
+}
+
+@keyframes pi-card-in {
+  from { opacity: 0; transform: translateY(5px) scale(0.996); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.compliance-card,
+.vision-card,
+.anomaly-card {
+  animation: pi-card-in 0.44s var(--pi-spring) both;
+  animation-delay: 60ms;
+}
+
+/* 结果融合完成时的"落定"提示：极轻的一次描边呼吸，
+   让用户感知"这一轮结束了"，而不是突然静止 */
+@keyframes pi-settle {
+  0%   { box-shadow: 0 0 0 0 rgba(139,140,255,0.0); }
+  40%  { box-shadow: 0 0 0 3px rgba(139,140,255,0.10); }
+  100% { box-shadow: 0 0 0 0 rgba(139,140,255,0.0); }
+}
+.message.ai:last-child .msg-bubble {
+  animation: pi-settle 0.7s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message,
+  .compliance-card,
+  .vision-card,
+  .anomaly-card,
+  .message.ai:last-child .msg-bubble {
+    animation: none !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   二十、命令面板（A3）
+   ----------------------------------------------------------
+   键盘优先：⌘K/Ctrl+K 唤起，↑↓ 选择，↵ 执行，Esc 关闭。
+   视觉上做成"浮在纸面上的一张卡片"：背景压暗 + 轻微缩放淡入，
+   面板本身用发丝线 + 顶部内高光，保持与全站一致的仪器语言。
+   ══════════════════════════════════════════════════════════ */
+.cmdk-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  margin-right: 8px;
+  font-size: 11.5px;
+  color: var(--pi-text-3);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--pi-hairline);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color var(--pi-dur-1) ease, border-color var(--pi-dur-1) ease,
+              background-color var(--pi-dur-1) ease;
+}
+.cmdk-trigger svg { width: 13px; height: 13px; }
+.cmdk-trigger kbd {
+  font-family: var(--pi-mono);
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--pi-hairline);
+  color: var(--pi-text-3);
+}
+.cmdk-trigger:hover {
+  color: var(--pi-text);
+  border-color: var(--pi-hairline-2);
+  background: rgba(255,255,255,0.06);
+}
+
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  background: rgba(6, 7, 10, 0.56);
+  backdrop-filter: blur(6px) saturate(120%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.cmdk-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+.cmdk-panel {
+  width: min(560px, 92vw);
+  background: color-mix(in oklab, var(--pi-surface-2) 92%, transparent);
+  border: 1px solid var(--pi-hairline-2);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 32px 80px -28px rgba(0,0,0,0.85);
+  overflow: hidden;
+  transform: translateY(-6px) scale(0.985);
+  opacity: 0;
+  transition: transform 0.22s var(--pi-spring), opacity 0.16s ease;
+}
+.cmdk-overlay.is-open .cmdk-panel { transform: none; opacity: 1; }
+
+.cmdk-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--pi-hairline);
+}
+.cmdk-input-row svg { width: 16px; height: 16px; color: var(--pi-text-3); flex: none; }
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--pi-text);
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+.cmdk-kbd, .cmdk-foot kbd {
+  font-family: var(--pi-mono);
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--pi-hairline);
+  color: var(--pi-text-3);
+}
+
+.cmdk-list {
+  max-height: min(48vh, 400px);
+  overflow-y: auto;
+  padding: 6px;
+}
+.cmdk-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.cmdk-item.is-active {
+  background: linear-gradient(90deg, rgba(139,140,255,0.16), rgba(139,140,255,0.05));
+  border-color: rgba(139,140,255,0.28);
+}
+.cmdk-label { font-size: 13px; color: var(--pi-text); }
+.cmdk-hint { font-size: 11.5px; color: var(--pi-text-3); }
+.cmdk-key {
+  font-family: var(--pi-mono);
+  font-size: 10px;
+  color: var(--pi-text-3);
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--pi-hairline);
+}
+.cmdk-empty { padding: 22px 12px; text-align: center; color: var(--pi-text-3); font-size: 12.5px; }
+
+.cmdk-foot {
+  display: flex;
+  gap: 16px;
+  padding: 9px 15px;
+  border-top: 1px solid var(--pi-hairline);
+  font-size: 10.5px;
+  color: var(--pi-text-3);
+}
+.cmdk-foot span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* 面板打开时禁止背景滚动 */
+html[data-cmdk="1"] body { overflow: hidden; }
+
+@media (max-width: 720px) {
+  .cmdk-trigger span, .cmdk-trigger kbd { display: none; }
+  .cmdk-overlay { padding-top: 8vh; }
+}
+
+/* Compact screens keep named navigation and all six task entries. */
+@media (max-width: 720px) {
+  .welcome { margin: 8px auto 0; padding: 8px 8px 12px; }
+  .welcome h1 { font-size: 28px; }
+  .welcome-brand { margin-bottom: 14px; }
+  .welcome > .welcome-lead { font-size: 13px; margin-bottom: 20px; }
+  .preset-grid { grid-template-columns: 1fr; gap: 10px; }
+  .preset-card { display: grid; grid-template-columns: 38px 1fr; grid-template-areas: "icon title" "icon desc"; gap: 3px 14px; align-items: center; }
+  .preset-card .pc-icon { grid-area: icon; margin: 0; }
+  .preset-card h4 { grid-area: title; margin: 0; }
+  .preset-card p { grid-area: desc; }
+  .preset-card .pc-badge { display: none; }
+  .cmdk-trigger { display: none; }
+  .topbar-tags, .inspector-reopen { display: none !important; }
+  .topbar { display: grid; grid-template-columns: 1fr; height: auto; min-height: 100px; padding: 6px 12px; gap: 2px; }
+  .topbar-left { gap: 8px; }
+  .topbar-title { font-size: 14px; max-width: none; }
+  .sidebar-toggle { width: 36px; height: 36px; }
+  .view-nav { display: flex; width: 100%; justify-content: space-between; gap: 2px; padding: 2px; border-radius: 12px; }
+  .view-nav-btn { justify-content: center; flex: 1; min-width: 0; min-height: 40px; padding: 7px 4px; gap: 4px; font-size: 12px; }
+  .view-nav-btn .vn-label { display: inline; }
+  .input-area { padding-left: 12px; padding-right: 12px; }
+}

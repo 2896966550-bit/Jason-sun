@@ -1,0 +1,33 @@
+# Equis 推理专用配置 — v4 维护：迁移现有硬编码值（不新增字段名）
+# 对应文档: v4 变更记录 #13 - 配置外置
+model:
+  student:
+    feature_dim: 384
+    variant: "b0"
+    # v4 维护：推理优化标志（原硬编码在 student.py）
+    eval_mode: true
+    no_grad: true
+
+memory_bank:
+  n_prototypes_per_class: 1024
+  top_k: 5
+  temperature: 0.1
+
+data:
+  image_size: 448
+
+# ===== v4 维护：以下配置原硬编码在各模块，现统一外置 =====
+inference:
+  threshold: -4.0              # 原 run_inference.py L188 硬编码
+  device: "cuda"               # 原 run_inference.py 默认参数
+
+sensor_reader:
+  sample_count: 3              # 原 sensor_reader.py 硬编码（保持 3 次平均）
+  sample_interval: 0.2        # v4 维护：原 0.5 优化为 0.2
+
+kb:
+  collection_name: "metrology_kb"  # 原 kb_tools.py 硬编码
+  count_fallback: 115              # 原 report_generator.py L61 硬编码
+
+web_search:
+  cache_ttl: 300               # 原 web_search.py 硬编码

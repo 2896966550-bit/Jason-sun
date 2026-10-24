@@ -1,0 +1,5 @@
+{
+  "python": "../.venv/Scripts/python.exe",
+  "opencv": "4.13.0",
+  "note": "Optional local capture-environment.json; relative Python paths resolve from agent/. Do not commit machine-local settings."
+}

@@ -1,0 +1,27 @@
+{
+  "columns": null,
+  "rows": null,
+  "square_size_mm": null,
+  "size_source": null,
+  "square_size_standard_uncertainty_mm": null,
+  "evidence_status": "pending_physical_confirmation",
+  "seller_listing": {
+    "model": "DFvision Q12-150-10",
+    "outer_size_mm": [
+      150,
+      150
+    ],
+    "squares_claimed": [
+      12,
+      9
+    ],
+    "candidate_inner_corners": [
+      11,
+      8
+    ],
+    "material_claimed": "PET film",
+    "precision_claimed_um": 5,
+    "scope": "seller screenshot only; not a calibration certificate; do not infer actual spacing from model name",
+    "source_image_sha256": "e7953380ddfd2717409457c38c00cacd20e29b77e698a147306dfa58073f65cc"
+  }
+}
