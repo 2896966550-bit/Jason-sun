@@ -1,0 +1,112 @@
+# Equis L3 不确定度耦合配置 — 对 GUM 框架的扩展应用
+# 本配置文件承载 L3 创新的所有可调参数，用于消融实验 G0/G1/G2 切换。
+#
+# 措辞纪律：本配置为"对 GUM 框架的扩展应用"，不是"符合 GUM"。
+# OOD 分数是测量上下文的信任信号，不是经典误差源。
+#
+# 加载方式（P2-22 起真正生效）：
+#   from agent.omni_ad.uncertainty.l3_config import build_compliance_input
+#   inp = build_compliance_input(measured_value=100.0, reference_value=100.0,
+#                                sensor_precision=0.01, env_temp=25.0)
+# 改造前本文件没有被任何 .py 加载，所有参数硬编码在 compliance.py 的 dataclass 默认值里。
+
+# ===== L3 模式开关 =====
+# True  = L3 三源合成（u_a + u_b + u_ood）
+# False = G0 baseline（L1 简化版，仅 u_a + u_b）
+include_u_ood: true
+
+# ===== Step 1: 异常量纲映射 =====
+a_mapping: "hard"  # "hard" (ReLU, G2a) 或 "softplus" (G2b)
+
+# 视觉异常（Omni-AD 输出，分数越高越异常）
+visual_threshold: -4.0  # Omni-AD 默认阈值，score > thr 即异常
+
+# 传感器异常（马氏距离，分数越高越异常）
+# 2.8 = sqrt(chi2_0.95(3)) = sqrt(7.81)，对应 3 特征（温度/湿度/振动）健康样本的 95% 分位；
+# 由 sensor_anomaly_from_readings() 计算（P2-23），基线需用健康样本标定后替换下方 sensor_baseline
+sensor_threshold: 2.8
+
+# ===== Step 2: 多源方和根合成 =====
+# beta 系数单位：mm/score_unit
+# 物理意义：每单位异常分数对应的测量不确定度
+# 标定方法：物理锚点法（Phase 1 P1-5）+ F1 微调（Phase 2）
+# 稳定性退路：F1 微调不稳定时使用物理锚点中位数
+# 标定脚本：agent/scripts/calibrate_beta.py（改前 compute_compliance 侧的
+# calibrate_beta_physical_anchor() 全项目零调用，beta 实为未标定魔数）
+beta_vis: 0.001      # 视觉 beta，初始默认值，待 Phase 1 标定后更新（量级参考 1e-3~1e-2）
+beta_sensor: 0.001   # 传感器 beta，初始默认值，待 Phase 2 sensor_ood 模块上线后标定
+
+# ===== Step 3: GUM 扩展合成 =====
+# A 类：传感器精度（矩形分布假设）
+# u_a = sensor_precision / sqrt(3)
+# sensor_precision 由具体传感器规格决定，不在此配置
+#
+# B 类：环境温度影响
+baseline_temp: 20.0        # 基准温度 摄氏度（JJF1059 默认 20C）
+# 材料线膨胀系数（单位 1/°C）。可选值：
+#   steel（钢，默认）11.5e-6 | aluminum（铝）23e-6 | invar（殷钢）1.2e-6
+#   copper（铜）16.5e-6 | stainless_steel（不锈钢 304）17.3e-6
+# 来源：常见材料手册 20~100°C 名义量级（量纲 1/°C）；真实计量以校准证书为准。
+# 历史缺陷：原值 0.0001（注释写"钢"）比真实值大 8.7 倍，
+# 导致 25°C/100mm 下 u_b=0.0289mm，比 0.01mm 精度的量具本身还大。
+material: "steel"
+# 若需覆盖材料表，可显式给出（优先于 material）：
+# temp_coefficient: 11.5e-6
+
+# 扩展不确定度
+k: 2.0  # 包含因子（k=2, ~95% 置信）
+
+# ===== Step 4: 合格判定（P2-24 三态 + 保护带）=====
+# 判定规则（d = 偏差, U = k·u_c 含 OOD, U_base = k·u_c_base 仅 u_a+u_b）：
+#   1) |d| > critical_band_high × U_base      → fail（可信基线硬边界，不受 OOD 影响）
+#   2) |d| > critical_band_low  × U_pass      → indeterminate（临界带，需人工复核）
+#   3) 否则                                    → pass
+#   4) OOD 主导（u_c > ood_dominance_ratio × u_c_base）→ 至多 indeterminate，绝不放宽 fail
+# 关键不变式：u_ood 增大只会让结论更保守，永远不会把"超差"翻成"合格"。
+guard_band_factor: 1.0        # U_effective = guard_band_factor * U；<1.0 表示更严格的保护带
+critical_band_low: 0.8        # 临界带下界（相对可信门限 guard_band_factor × U_base）
+critical_band_high: 1.2       # 硬 fail 比例（相对 U_base）
+ood_dominance_ratio: 1.5      # U 相对 U_base 膨胀超过该倍数 → 至少判 indeterminate
+
+# ===== 传感器异常基线（P2-23）=====
+# 由 sensor_anomaly_from_readings() 使用：z = (x - mean) / std。
+# 当前为**占位默认值**（std 取保守偏大值，避免正常波动被误判异常）；
+# 真实部署必须用健康样本重新标定后替换。
+# 量纲：t [°C]、h [%RH]、vib [m/s²]（vib 为三轴加速度模长）
+sensor_baseline:
+  t_mean: 25.0     # 温度基线均值
+  t_std: 1.5       # 温度基线标准差
+  h_mean: 50.0     # 湿度基线均值
+  h_std: 8.0       # 湿度基线标准差
+  vib_mean: 9.81   # 振动模长基线均值（重力加速度量级）
+  vib_std: 0.5     # 振动模长基线标准差
+# 可选：3×3 逆协方差矩阵（行优先）。留空 = 按 t/h/振动相互独立处理（对角标准化）。
+# sensor_inv_cov:
+#   - [1.0, 0.0, 0.0]
+#   - [0.0, 1.0, 0.0]
+#   - [0.0, 0.0, 1.0]
+
+# ===== 消融实验组别预设 =====
+# 在消融脚本中切换以下预设（agent/scripts/ablation_ood_gum.py）：
+#
+# G0 (baseline L1):
+#   include_u_ood: false
+#   a_mapping: "hard"
+#
+# G1 (L3, calibrated beta, same set):
+#   include_u_ood: true
+#   a_mapping: "hard"
+#   beta_vis: <calibrated>
+#   beta_sensor: <calibrated>
+#
+# G2a (L3, hard ReLU):
+#   include_u_ood: true
+#   a_mapping: "hard"
+#   beta_vis: <calibrated>
+#   beta_sensor: <calibrated>
+#
+# G2b (L3, softplus):
+#   include_u_ood: true
+#   a_mapping: "softplus"
+#   beta_vis: <calibrated>
+#   beta_sensor: <calibrated>

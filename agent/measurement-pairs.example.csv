@@ -1,0 +1,1 @@
+event_id,specimen_id,session_id,split,measured_value_mm,reference_value_mm,u_ref_mm,anomaly_score,epipolar_p95_px,roi_valid_fraction

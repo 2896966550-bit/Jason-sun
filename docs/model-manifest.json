@@ -1,0 +1,17 @@
+{
+  "distributed_with_source": false,
+  "files": [
+    {
+      "file": "student_best.pth",
+      "target": "agent/omni_ad/weights/student_best.pth",
+      "bytes": 18213559,
+      "sha256": "1613433cfa72ac6ed6711fee05ccc8cc1c163728cd674421378b7797d0fc6bda"
+    },
+    {
+      "file": "memory_bank.pkl",
+      "target": "agent/omni_ad/weights/memory_bank.pkl",
+      "bytes": 23594014,
+      "sha256": "d30303f2695266e4a8b3d00621ed129ccf63328805b9b862d7e6c5efaaeef712"
+    }
+  ]
+}

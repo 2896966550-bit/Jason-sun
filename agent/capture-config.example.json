@@ -1,0 +1,19 @@
+{
+  "left_device_id": null,
+  "right_device_id": null,
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "max_skew_ms": 40,
+  "max_age_ms": 500,
+  "settings": {
+    "auto_exposure": null,
+    "exposure": null,
+    "auto_focus": null,
+    "focus": null,
+    "auto_white_balance": null,
+    "white_balance": null,
+    "gain": null
+  },
+  "identity": {}
+}

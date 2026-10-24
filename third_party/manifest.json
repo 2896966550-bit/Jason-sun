@@ -1,0 +1,46 @@
+[
+  {
+    "library": "katex",
+    "repository": "KaTeX/KaTeX",
+    "license_spdx": "MIT",
+    "license_source": "https://github.com/KaTeX/KaTeX/blob/main/LICENSE",
+    "files": [
+      {
+        "path": "agent/static/katex/katex.min.js",
+        "sha256": "dc84b296ec3e884de093158f760fd9d45b6c7abe58b5381557f4e138f46a58ae",
+        "bytes": 277038
+      },
+      {
+        "path": "agent/static/katex/katex.min.css",
+        "sha256": "505d5f829022bb7b4f24dfee0aa1141cd7bba67afe411d1240335f820960b5c3",
+        "bytes": 23196
+      }
+    ]
+  },
+  {
+    "library": "marked",
+    "repository": "markedjs/marked",
+    "license_spdx": "NOASSERTION",
+    "license_source": "https://github.com/markedjs/marked/blob/master/LICENSE",
+    "files": [
+      {
+        "path": "agent/static/marked.min.js",
+        "sha256": "e479cd780b6f4fe1494c6b4087505fa987f27f5ba6e0730a588e8398a07ee6e1",
+        "bytes": 35161
+      }
+    ]
+  },
+  {
+    "library": "mermaid",
+    "repository": "mermaid-js/mermaid",
+    "license_spdx": "MIT",
+    "license_source": "https://github.com/mermaid-js/mermaid/blob/develop/LICENSE",
+    "files": [
+      {
+        "path": "agent/static/mermaid.min.js",
+        "sha256": "61b335a46df05a7ce1c98378f60e5f3e77a7fb608a1056997e8a649304a936d6",
+        "bytes": 3335717
+      }
+    ]
+  }
+]

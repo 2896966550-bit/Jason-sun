@@ -1,0 +1,68 @@
+# ============================================================
+# Equis .gitignore
+# 目的：① 防止密钥与运行时数据入库；② 排除体积大的可重生成资源
+# 注意：本文件由代码审计后新增（原项目无 git 仓库、无 .gitignore）
+# ============================================================
+
+# ── 密钥：绝对不能提交 ──
+.env
+*.env
+!.env.example
+**/agent_backup_*/.env
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ── 运行时数据（含数据库与用户上传，不入库）──
+# 注意：必须用前导斜杠锚定到仓库根。写成裸 `data/` 会匹配**任意深度**的
+# data/ 目录，从而把源码目录 omni_ad/data/ 也整个忽略掉
+# （实测该目录长期处于"未被 git 跟踪"状态，克隆即丢失）。
+/data/
+**/data/*.db
+**/data/*.db-wal
+**/data/*.db-shm
+/data/chroma_db/
+/data/uploads/
+/data/captures/
+*.sqlite3
+
+# ── 模型权重（42 MB，二进制，另行保管）──
+omni_ad/weights/
+*.pth
+*.pkl
+
+# ── 前端第三方库（可从 npm/官方包重装，体积大）──
+*.min.js.map
+
+# ── 编辑器 / 系统 ──
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+nul
+%PROGRAMDATA%/
+NVIDIA Corporation/
+
+# ── 历史备份树（审计建议清理，禁止再提交）──
+agent_backup_*/
+
+# ── 生成物 ──
+*.pdf
+*.log
+outputs/
+output/
+
+# Machine-local capture interpreter configuration
+/capture-environment.json
+/capture-config.json
+/calibration-board.json

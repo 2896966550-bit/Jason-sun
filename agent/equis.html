@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Equis · 测量可信度保障系统</title>
+<link rel="icon" href="/static/mascot.png" type="image/png">
+<link rel="stylesheet" href="/static/katex/katex.min.css">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/cards.css">
+<!-- 视觉、动效与交互样式按职责分层 -->
+<link rel="stylesheet" href="/static/css/premium.css">
+<link rel="stylesheet" href="/static/css/motion.css">
+<link rel="stylesheet" href="/static/css/interaction.css">
+<script src="/static/katex/katex.min.js"></script>
+<script src="/static/marked.min.js"></script>
+<script>
+/* P3-37：主题预置，避免首屏闪白（与 app.js 共用 localStorage 键 equis-theme） */
+(function(){try{var s=localStorage.getItem('equis-theme');var d=s?s==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();
+</script>
+<!-- P3-37: 内联样式已拆分到 /static/css/{tokens,app,cards}.css -->
+</head>
+<body>
+
+<!-- ══ 图标精灵（2026-10-17）══════════════════════════════════
+     原界面用 emoji 当图标（🌡💧📳🖼️🔍📷📚…）。emoji 的观感随系统字体
+     差异极大、无法控制描边与颜色，是"廉价感"的主要来源。
+     这里统一换成 24×24 线性图标（stroke=currentColor），
+     颜色跟随文字色，尺寸由 CSS 控制。 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="ico-base" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.7a8.4 8.4 0 1 1 16.1-3.8z"/></symbol>
+  <symbol id="i-sensor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6"/><path d="M8.5 16.5a5 5 0 1 1 7 0"/><path d="M5 13a9 9 0 1 1 14 0"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-4.5-4.5L7 20"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 12h10"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3H9z"/><path d="M9 5.5H7a2 2 0 0 0-2 2V20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5a2 2 0 0 0-2-2h-2"/><path d="M8.5 12h7M8.5 16h5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4M8 22h8"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-1.6-1.6-1.9-1.6-3.2 0-1 .8-1.8 2-1.8H17a4 4 0 0 0 4-4c0-4-4.2-7.2-9-7.2z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="11" cy="7" r="1"/><circle cx="15.5" cy="8" r="1"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-thermometer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0z"/><path d="M12 16.5v-1"/></symbol>
+  <symbol id="i-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7s6 6.3 6 10.5a6 6 0 0 1-12 0C6 9 12 2.7 12 2.7z"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-6 3 12 3-9 2 5h5"/></symbol>
+</svg>
+
+<svg style="display:none"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></svg>
+<div class="noise-overlay" style="position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0.025;mix-blend-mode:overlay;transform:translateZ(0);contain:layout style paint"><div style="width:100%;height:100%;filter:url(#noise)"></div></div>
+
+<div class="bg-ambient">
+  <div class="glow"></div>
+  <div class="glow"></div>
+  <div class="glow"></div>
+</div>
+
+<div class="app" id="app">
+  <!-- ── P3-33：主导航 rail（由 VIEW_META 渲染）── -->
+  <nav class="rail" id="rail" aria-label="主导航">
+    <div class="rail-logo"><img src="/static/mascot.png" alt="Equis"></div>
+    <div class="rail-items" id="railItems"></div>
+    <div class="rail-foot">
+      <button class="rail-btn" onclick="toggleTheme()" title="切换外观" aria-label="切换外观">◐</button>
+      <button class="rail-btn" onclick="toggleSidebar()" title="收起 / 展开侧栏" aria-label="收起或展开侧栏">⇤</button>
+    </div>
+  </nav>
+
+  <!-- Sidebar（context 区）-->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <img src="/static/mascot.png" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+      </div>
+      <div>
+        <div class="sidebar-title">Equis</div>
+        <div class="sidebar-subtitle">测量可信度 AI 保障</div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="newChat()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      新对话
+    </button>
+
+    <div class="history-section">
+      <div class="history-label">历史对话</div>
+      <div id="historyList">
+        <!-- 历史对话会动态加载 -->
+      </div>
+    </div>
+
+    <!-- Sensor Mini Panel（P3-33：移入 context 侧栏底部）-->
+    <div class="sensor-panel" id="sensorPanel">
+      <div class="sensor-item" id="sensorTemp">
+        <span class="sensor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-thermometer"/></svg></span>
+        <span class="sensor-label">温度</span>
+        <span class="sensor-val">--.-</span><span class="sensor-unit">°C</span>
+      </div>
+      <div class="sensor-item" id="sensorHum">
+        <span class="sensor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-droplet"/></svg></span>
+        <span class="sensor-label">湿度</span>
+        <span class="sensor-val">--.-</span><span class="sensor-unit">%RH</span>
+      </div>
+      <div class="sensor-item" id="sensorVib">
+        <span class="sensor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wave"/></svg></span>
+        <span class="sensor-label">振动</span>
+        <span class="sensor-val">--.-</span><span class="sensor-unit">g</span>
+      </div>
+      <div class="sensor-status" id="sensorStatus">传感器未连接</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span>在线</span>
+      </div>
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="切换外观">
+        <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="iconMoon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Sidebar Overlay (Mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="展开或收起历史侧栏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title" id="viewTitle">测量可信度保障系统</div>
+      </div>
+      <!-- P3-32：视图导航由 VIEW_META 统一渲染 -->
+      <nav class="view-nav" id="viewNav" aria-label="主导航"></nav>
+      <!-- A3：命令面板入口（⌘K / Ctrl+K 亦可直接唤起） -->
+      <button class="cmdk-trigger" type="button" onclick="openCommandPalette()"
+              aria-label="打开命令面板（⌘K）" title="命令面板 ⌘K">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-scan"/></svg>
+        <span>命令</span>
+        <kbd>⌘K</kbd>
+      </button>
+      <div class="topbar-tags">
+        <span class="topbar-tag"><span class="dot"></span>JJF/JJG/GB知识库</span>
+        <span class="topbar-tag"><span class="dot"></span>联网搜索</span>
+      </div>
+    </header>
+
+    <!-- P3-32：视图栈（hash 路由驱动切换） -->
+    <div class="view-stack" id="viewStack">
+
+    <!-- ── 视图 1：对话 ── -->
+    <section class="view view-chat" data-view="chat" id="viewChat">
+    <div class="chat-container" id="chatContainer">
+      <div class="message-list" id="messageList">
+        <!-- Welcome Screen -->
+        <div class="welcome" id="welcomeScreen">
+          <div class="welcome-brand"><div class="welcome-icon">
+            <img src="/static/mascot.png" style="width:100%;height:100%;object-fit:cover;border-radius:14px" alt="Equis 助手">
+          </div>
+          <span class="welcome-kicker">EQUIS / 测量分析助手</span></div>
+          <h1>你好，我是 Equis</h1>
+          <p class="welcome-lead">从一张工件图片，或一组测量数据开始。<br>查看分析结果，也看清判断依据。</p>
+          <div class="task-heading"><span>选择一项任务</span><span>图片 · 数值 · 标准</span></div>
+
+          <div class="preset-grid">
+            <div class="preset-card preset-primary" onclick="document.getElementById('imageInput').click()">
+              <span class="pc-art" aria-hidden="true"><svg viewBox="0 0 122 80" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="28" y="17" width="64" height="44" rx="6"/><path d="m32 52 16-16 13 12 12-9 15 13"/><circle cx="76" cy="29" r="4"/><path class="pc-detail" d="M19 24v-9h9m65 0h9v9M19 54v10h9m65 0h9V54"/></svg></span>
+              <div class="pc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg></div>
+              <span class="pc-badge">从这里开始</span><h4>上传工件图片</h4>
+              <p>选择照片，查看对象与可见特征</p>
+            </div>
+            <div class="preset-card" onclick="openMeasurementForm('consistency')">
+              <span class="pc-art" aria-hidden="true"><svg viewBox="0 0 122 80" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="61" cy="39" r="24"/><circle class="pc-detail" cx="61" cy="39" r="32" stroke-dasharray="2 6"/><path d="m49 39 8 8 17-18"/><path class="pc-detail" d="M15 39h14m64 0h14M61 2v8m0 58v8"/></svg></span>
+              <div class="pc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-scan"/></svg></div>
+              <h4>参考一致性</h4>
+              <p>填写实测与参考值，分析偏差</p>
+            </div>
+            <div class="preset-card" onclick="prepareDraft('请使用摄像头采集工件图像进行视觉异常分析，并确认工件类别；阈值未标定时只返回分数。')">
+              <span class="pc-art" aria-hidden="true"><svg viewBox="0 0 122 80" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M31 25V15h13m35 0h13v10M31 53v10h13m35 0h13V53"/><path d="m42 45 9-15 11 18 10-12 10 9"/><path class="pc-scan" d="M25 35h73"/><circle class="pc-detail" cx="62" cy="39" r="27" stroke-dasharray="2 5"/></svg></span>
+              <div class="pc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg></div>
+              <h4>相机视觉分析</h4>
+              <p>编辑采集请求；异常阈值待标定</p>
+            </div>
+            <div class="preset-card" onclick="prepareDraft('JJF 1059.1-2012 中不确定度B类评定的要求是什么？请注明标准来源。')">
+              <span class="pc-art" aria-hidden="true"><svg viewBox="0 0 122 80" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M60 21c-12-8-22-8-34-5v43c12-3 22-3 34 5 12-8 22-8 34-5V16c-12-3-22-3-34 5Z"/><path d="M60 21v43"/><path class="pc-detail" d="m35 27 16 3m-16 7 16 3m18-10 16-3m-16 13 16-3M21 65h79"/></svg></span>
+              <div class="pc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-book"/></svg></div>
+              <h4>检索计量标准</h4>
+              <p>检索标准摘要，核对来源与适用性</p>
+            </div>
+            <div class="preset-card" onclick="openMeasurementForm('uncertainty')">
+              <span class="pc-art" aria-hidden="true"><svg viewBox="0 0 122 80" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="38" y="12" width="49" height="58" rx="5"/><path d="M48 26h27m-27 9h19m-19 9h10"/><path d="m63 55 6 6 11-13"/><path class="pc-detail" d="M29 24v38m-8-31v24m73-26v27"/></svg></span>
+              <div class="pc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clipboard"/></svg></div>
+              <h4>不确定度预算</h4>
+              <p>填写器具精度与温度，估计预算</p>
+            </div>
+            <div class="preset-card" onclick="prepareDraft('搜索近期计量标准更新，给出发布日期、适用范围与原始来源。')">
+              <span class="pc-art" aria-hidden="true"><svg viewBox="0 0 122 80" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="61" cy="39" r="25"/><ellipse cx="61" cy="39" rx="11" ry="25"/><path d="M37 32h48M37 47h48"/><ellipse class="pc-detail" cx="61" cy="39" rx="43" ry="12" transform="rotate(-28 61 39)"/><circle cx="95" cy="20" r="3" fill="currentColor"/></svg></span>
+              <div class="pc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe"/></svg></div>
+              <h4>联网检索</h4>
+              <p>编辑检索主题，查找公开来源</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="scroll-bottom-btn" id="scrollBottomBtn" aria-label="回到底部">↓</button>
+
+    <!-- Input（属于对话视图） -->
+    <div class="input-area">
+      <div class="input-wrap">
+        <div class="input-box">
+          <div class="input-toolbar">
+            <button class="tool-btn tool-btn-wide" title="上传图片（也可直接粘贴 / 拖拽图片到窗口）" onclick="document.getElementById('imageInput').click()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg><span class="tool-label">上传图片</span>
+              <span class="tooltip">上传图片（支持粘贴与拖拽）</span>
+            </button>
+            <button class="tool-btn tool-btn-wide" id="measurementTrigger" type="button" onclick="openMeasurementForm('consistency')" aria-haspopup="dialog">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clipboard"/></svg><span class="tool-label">测量参数</span>
+            </button>
+            <details class="composer-more" id="composerMore">
+              <summary class="tool-btn" aria-label="更多工具" title="更多工具"><span aria-hidden="true">···</span></summary>
+              <div class="composer-menu">
+                <button class="tool-btn" id="voiceBtn" type="button" onclick="startVoiceInput()"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg>语音输入</button>
+                <button class="tool-btn" type="button" onclick="downloadReport()"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file"/></svg>导出对话报告</button>
+                <button class="tool-btn" type="button" onclick="openSystemPanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg>系统与运行记录</button>
+              </div>
+            </details>
+            <button class="tool-btn stop-btn" id="stopBtn" title="停止生成" onclick="stopStreaming()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stop"/></svg>
+              <span class="tooltip">停止生成</span>
+            </button>
+            <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+          </div>
+          <textarea
+            id="msgInput" aria-label="对话内容"
+            placeholder="向 Equis 提问，回车发送，Shift+回车换行"
+            rows="1"
+            oninput="autoResize(this)"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="input-hint"><span>Equis 可能会出错，请核实重要信息</span><button id="motionToggle" class="motion-toggle" type="button" aria-label="动态效果：跟随系统">跟随系统</button></div>
+      </div>
+    </div>
+    </section><!-- /view-chat -->
+
+    <!-- ── 视图 2：工作台（原 body.monitor-mode 并入此处）── -->
+    <section class="view view-workspace" data-view="workspace" id="viewWorkspace">
+      <div class="view-head">
+        <div>
+          <h2 class="view-h2">工作台</h2>
+          <p class="view-sub">传感器总线实时状态 · 运行时可观测性（2s 自动刷新）</p>
+        </div>
+        <span class="monitor-status" id="monitorStatus">连接中...</span>
+      </div>
+      <div class="view-body">
+        <div class="monitor-dashboard" id="monitorDashboard">
+          <div class="monitor-grid">
+            <div class="monitor-card">
+              <div class="monitor-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-thermometer"/></svg></div>
+              <div class="monitor-card-label">温度</div>
+              <div class="monitor-card-value" id="monTemp">--.-</div>
+              <div class="monitor-card-unit">°C</div>
+            </div>
+            <div class="monitor-card">
+              <div class="monitor-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-droplet"/></svg></div>
+              <div class="monitor-card-label">湿度</div>
+              <div class="monitor-card-value" id="monHum">--.-</div>
+              <div class="monitor-card-unit">%RH</div>
+            </div>
+            <div class="monitor-card">
+              <div class="monitor-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wave"/></svg></div>
+              <div class="monitor-card-label">振动</div>
+              <div class="monitor-card-value" id="monVib">--.--</div>
+              <div class="monitor-card-unit">m/s²</div>
+            </div>
+          </div>
+          <div class="monitor-footer">
+            <span id="monitorTime">--</span>
+            <span class="monitor-interval" id="monitorInterval">刷新间隔: 2s</span>
+          </div>
+        </div>
+        <h3 class="view-h3">最近运行</h3>
+        <div class="trace-list" id="workspaceRuns">加载中…</div>
+      </div>
+    </section>
+
+    <!-- ── 视图 3：标准库 / 历史提问 ── -->
+    <section class="view view-standards" data-view="standards" id="viewStandards">
+      <div class="view-head">
+        <div>
+          <h2 class="view-h2">标准库与历史提问</h2>
+          <p class="view-sub">浏览历史提问，点击继续查询</p>
+        </div>
+        <button class="ghost-btn" onclick="loadStandardsView(true)">刷新</button>
+      </div>
+      <div class="view-body">
+        <div class="std-grid" id="standardsList">加载中…</div>
+      </div>
+    </section>
+
+    <!-- ── 视图 4：运行案例（支持钻取，浏览器后退可用）── -->
+    <section class="view view-cases" data-view="cases" id="viewCases">
+      <div class="view-head">
+        <div>
+          <h2 class="view-h2">运行案例（可追溯）</h2>
+          <p class="view-sub">查看运行记录、处理步骤与耗时，点击展开详情</p>
+        </div>
+        <button class="ghost-btn" onclick="loadCasesView(true)">刷新</button>
+      </div>
+      <div class="view-body">
+        <div class="trace-list" id="casesList">加载中…</div>
+      </div>
+    </section>
+
+    <!-- ── 视图 5：系统与数据合规（原系统面板模态升级为页面）── -->
+    <section class="view view-system" data-view="system" id="viewSystem">
+      <div class="view-head">
+        <div>
+          <h2 class="view-h2">系统与数据合规</h2>
+          <p class="view-sub">架构图 · 数据不出境自检 · 人脸脱敏 · 审计留痕
+            <span class="cr-badge" id="residencyChip">自检中…</span></p>
+        </div>
+        <button class="ghost-btn" onclick="loadCompliance(true)">重新自检</button>
+      </div>
+      <div class="view-body">
+        <div class="sys-tabs">
+          <button class="ptab active" data-tab="arch" onclick="switchPanelTab('arch')">架构图</button>
+          <button class="ptab" data-tab="hist" onclick="switchPanelTab('hist')">运行历史</button>
+          <button class="ptab" data-tab="compliance" onclick="switchPanelTab('compliance')">数据合规自检</button>
+        </div>
+        <div class="ptab-pane" id="paneArch"><div id="mermaidBox" class="mermaid-box">加载中…</div></div>
+        <div class="ptab-pane" id="paneHist" style="display:none"><div id="traceList" class="trace-list">加载中…</div></div>
+        <div class="ptab-pane" id="paneCompliance" style="display:none"><div id="complianceBox" class="compliance-report">加载中…</div></div>
+      </div>
+    </section>
+
+    </div><!-- /view-stack -->
+  </main>
+
+  <!-- ── P3-35/P3-36：右侧检查器（运行时间轴 / 卡片下钻详情）──
+       2026-10-17：默认**收起**。原先它常驻占 ~22% 宽度却大部分时间是空的
+       （"发起一次提问后…"），把主内容区挤窄。现在：
+         · 空态收起，主区吃满；
+         · startRunTimeline() → showInspector() 会自动展开；
+         · 收起后右下角留一个「运行时间轴」胶囊，随时可唤回。 -->
+  <aside class="inspector" id="inspector" aria-label="检查器">
+    <div class="inspector-head">
+      <span id="inspectorTitle">运行时间轴</span>
+      <button class="panel-close" onclick="closeInspector()" aria-label="收起检查器"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="inspector-body" id="inspectorBody">
+      <div class="run-timeline" id="runTimeline">
+        <div class="run-empty">发起一次提问后，这里会实时显示各智能体节点的执行时间轴。</div>
+      </div>
+    </div>
+  </aside>
+  <button class="inspector-reopen" id="inspectorReopen" type="button"
+          onclick="toggleInspector()" aria-label="打开运行时间轴">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg>
+    <span>运行时间轴</span>
+  </button>
+</div>
+
+
+<dialog class="measurement-dialog" id="measurementDialog" aria-labelledby="measurementTitle" aria-describedby="measurementHelp">
+  <form id="measurementForm" novalidate>
+    <div class="measurement-head"><div><span class="welcome-kicker">MEASUREMENT / 数值分析</span><h2 id="measurementTitle">填写测量参数</h2></div>
+      <button class="panel-close" id="measurementClose" type="button" aria-label="关闭测量参数"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p id="measurementHelp">只填写实际掌握的数据。参数将添加到草稿，核对后再发送。</p>
+    <label class="measurement-mode" for="measurementMode">分析任务<select id="measurementMode" name="mode"><option value="consistency">参考一致性</option><option value="uncertainty">不确定度预算</option></select></label>
+    <div class="measurement-fields">
+      <label for="measureValue">实测值 <span>mm</span><input id="measureValue" name="measured" type="text" inputmode="decimal" autocomplete="off" placeholder="填写实测读数" required></label>
+      <label for="referenceValue" id="referenceField">参考值 <span>mm</span><input id="referenceValue" name="reference" type="text" inputmode="decimal" autocomplete="off" placeholder="填写参考读数" required></label>
+      <label for="precisionValue">器具误差限 MPE <span>mm</span><input id="precisionValue" name="precision" type="text" inputmode="decimal" autocomplete="off" placeholder="填写非负误差限" required></label>
+      <label for="temperatureValue">环境温度 <span>°C</span><input id="temperatureValue" name="temperature" type="text" inputmode="decimal" autocomplete="off" placeholder="填写本次环境温度" required></label>
+    </div>
+    <p class="measurement-scope" id="measurementScope">比较实测与参考值的一致性，不用于工件公差合格判定。</p>
+    <p class="measurement-error" id="measurementError" role="alert" hidden></p>
+    <div class="measurement-footer"><button class="ghost-btn" id="measurementCancel" type="button">取消</button><button class="measurement-apply" type="submit">添加到草稿</button></div>
+  </form>
+</dialog>
+
+<!-- 前端模块 -->
+
+<!-- ── 系统面板（B1 架构图 / B2 运行历史）── -->
+<!-- P3-37: 内联样式已拆分到 /static/css/{tokens,app,cards}.css -->
+
+<!-- P3-37: 内联脚本已拆分到 /static/js/{cards,sse,app}.js -->
+
+<script src="/static/js/cards.js"></script>
+<script src="/static/js/sse.js"></script>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/composer.js"></script>
+<script src="/static/js/palette.js"></script>
+<script src="/static/js/motion.js"></script>
+<script src="/static/js/interaction.js"></script>
+</body>
+</html>

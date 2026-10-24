@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.ico binary
+agent/static/katex/** binary
+agent/static/*.min.js binary
+docs/legacy/** -whitespace
